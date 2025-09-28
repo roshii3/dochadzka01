@@ -7,18 +7,18 @@ import time as tmode
 from streamlit_cookies_manager import EncryptedCookieManager
 
 # =====================================
-# Cookies manažér (všetko je na strane klienta)
+# Cookies manažér
 # =====================================
 cookies = EncryptedCookieManager(
     prefix="attendance_app_",
-    password="super_tajne_heslo123"  # silné heslo
+    password="super_tajne_heslo"  # zmeň na vlastné silné heslo
 )
 
 if not cookies.ready():
-    st.stop()  # čaká, kým sa cookies načítajú
+    st.stop()
 
 # =====================================
-# Databáza
+# Nastavenia databázy
 # =====================================
 DATABAZA_URL = st.secrets["DATABAZA_URL"]
 DATABAZA_KEY = st.secrets["DATABAZA_KEY"]
@@ -35,14 +35,14 @@ POSITIONS = [
 # Session state pre zariadenie
 # =====================================
 if "device_code" not in st.session_state:
-    # načítanie z cookies
     st.session_state.device_code = cookies.get("device_code")
 
 def set_device_code(code: str):
-    """Uloží kód zariadenia do session a cookies (klient)"""
-    st.session_state.device_code = code.strip()
-    cookies["device_code"] = code.strip()
-    cookies.save()  # uloženie do prehliadača
+    """Uloží kód zariadenia do session a cookies"""
+    code = code.strip()
+    st.session_state.device_code = code
+    cookies["device_code"] = code
+    cookies.save()
 
 # =====================================
 # Overenie zariadenia v DB
