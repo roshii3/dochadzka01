@@ -4,64 +4,81 @@ import pytz
 from supabase import create_client, Client
 import re
 import time as tmode
-import os
+from streamlit_cookies_manager import EncryptedCookieManager
 
-# ======================================
-# Nastavenia databázy
-# ======================================
-if "DATABAZA_URL" in st.secrets:
-    DATABAZA_URL = st.secrets["DATABAZA_URL"]
-    DATABAZA_KEY = st.secrets["DATABAZA_KEY"]
-else:
-    DATABAZA_URL = os.environ.get("DATABAZA_URL")
-    DATABAZA_KEY = os.environ.get("DATABAZA_KEY")
+# =====================================
+# Cookies manažér (všetko je na strane klienta)
+# =====================================
+cookies = EncryptedCookieManager(
+    prefix="attendance_app_",
+    password="super_tajne_heslo123"  # silné heslo
+)
 
-if not DATABAZA_URL or not DATABAZA_KEY:
-    st.error("❌ Chýbajú databázové prístupy.")
-else:
-    databaza: Client = create_client(DATABAZA_URL, DATABAZA_KEY)
+if not cookies.ready():
+    st.stop()  # čaká, kým sa cookies načítajú
+
+# =====================================
+# Databáza
+# =====================================
+DATABAZA_URL = st.secrets["DATABAZA_URL"]
+DATABAZA_KEY = st.secrets["DATABAZA_KEY"]
+databaza: Client = create_client(DATABAZA_URL, DATABAZA_KEY)
 
 tz = pytz.timezone("Europe/Bratislava")
-POSITIONS = ["Veliteľ","CCTV","Brány","Sklad2","Turniket2","Plombovac2","Sklad3","Turniket3","Plombovac3"]
+POSITIONS = [
+    "Veliteľ","CCTV","Brány","Sklad2",
+    "Turniket2","Plombovac2","Sklad3",
+    "Turniket3","Plombovac3"
+]
 
-# ======================================
+# =====================================
 # Session state pre zariadenie
-# ======================================
+# =====================================
 if "device_code" not in st.session_state:
-    st.session_state.device_code = None
+    # načítanie z cookies
+    st.session_state.device_code = cookies.get("device_code")
 
 def set_device_code(code: str):
+    """Uloží kód zariadenia do session a cookies (klient)"""
     st.session_state.device_code = code.strip()
-    st.experimental_set_query_params(device_code=code.strip())  # uloženie do URL ako perzistentný záznam počas session
+    cookies["device_code"] = code.strip()
+    cookies.save()  # uloženie do prehliadača
 
-def reset_device_code():
-    st.session_state.device_code = None
-    st.experimental_set_query_params(device_code="")
-
+# =====================================
+# Overenie zariadenia v DB
+# =====================================
 def verify_device(code: str) -> bool:
     result = databaza.table("devices").select("code").eq("code", code.strip()).execute()
     return bool(result.data and len(result.data) > 0)
 
-# ======================================
+# =====================================
 # Validácia času
-# ======================================
+# =====================================
 def valid_arrival(now):
     return (time(5,0) <= now.time() <= time(7,0)) or (time(13,0) <= now.time() <= time(15,0))
 
 def valid_departure(now):
     return (time(13,30) <= now.time() <= time(15,0)) or (time(21,0) <= now.time() <= time(23,0))
 
+# =====================================
+# Validácia QR kódu
+# =====================================
 def is_valid_code(code: str) -> bool:
     return bool(re.fullmatch(r"[A-Za-z0-9]{8}", code))
 
+# =====================================
+# Uloženie záznamu
+# =====================================
 def save_attendance(user_code, position, action, now=None):
     user_code = user_code.strip()
     if len(user_code) != 8:
         st.warning("⚠️ Neplatné číslo čipu!")
         return False
+
     if not now:
         now = datetime.now(tz)
     is_valid = valid_arrival(now) if action == "Príchod" else valid_departure(now)
+
     databaza.table("attendance").insert({
         "user_code": user_code,
         "position": position,
@@ -71,9 +88,9 @@ def save_attendance(user_code, position, action, now=None):
     }).execute()
     return is_valid
 
-# ======================================
-# Hlavné UI
-# ======================================
+# =====================================
+# Zamestnanecký view
+# =====================================
 def zamestnanec_view():
     if "temp_user_code" not in st.session_state:
         st.session_state.temp_user_code = ""
@@ -84,12 +101,11 @@ def zamestnanec_view():
     if "reload_counter" not in st.session_state:
         st.session_state.reload_counter = 0
 
-    # Kontrola zariadenia
+    # 🔐 kontrola zariadenia
     if not st.session_state.device_code:
         st.subheader("Autorizácia zariadenia")
         input_code = st.text_input("Zadaj kód zariadenia")
-        col1, col2 = st.columns(2)
-        if col1.button("Potvrdiť kód"):
+        if st.button("Potvrdiť kód"):
             if input_code.strip():
                 if verify_device(input_code):
                     set_device_code(input_code)
@@ -99,8 +115,6 @@ def zamestnanec_view():
                     st.error("❌ Kód zariadenia nie je povolený!")
             else:
                 st.warning("Zadaj platný kód zariadenia!")
-        if col2.button("🔄 Reset zariadenia"):
-            reset_device_code()
         return
 
     now = datetime.now(tz)
@@ -114,17 +128,23 @@ def zamestnanec_view():
         st.experimental_rerun()
 
     input_key = f"user_code_input_{st.session_state.reload_counter}"
-    user_code = st.text_input("Naskenuj svoj QR kód", value=st.session_state.temp_user_code, key=input_key).replace(" ", "")
+    user_code = st.text_input(
+        "Naskenuj svoj QR kód",
+        value=st.session_state.temp_user_code,
+        key=input_key
+    ).replace(" ", "")
 
     st.write("👉 Vyber svoju pozíciu:")
     cols = st.columns(3)
     for i, pos in enumerate(POSITIONS):
         if cols[i % 3].button(pos):
             st.session_state.selected_position = pos
+
     if st.session_state.selected_position:
         st.info(f"Vybraná pozícia: {st.session_state.selected_position}")
 
     col1, col2 = st.columns(2)
+
     if col1.button("✅ Príchod", key="prichod_btn"):
         if not user_code or not st.session_state.selected_position:
             st.session_state.last_message = "⚠️ Zadaj QR kód a vyber pozíciu!"
@@ -156,7 +176,9 @@ def zamestnanec_view():
         message_placeholder.empty()
         st.session_state.last_message = ""
 
-# ======================================
+# =====================================
+# Spustenie app
+# =====================================
 def main():
     zamestnanec_view()
 
