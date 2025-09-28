@@ -36,13 +36,23 @@ def set_device_code(code: str):
 #databaza: Client = create_client(DATABAZA_URL, DATABAZA_KEY)
 
 import os
+import streamlit as st
+from supabase import create_client, Client
 
-# Nastavenia databázy
-DATABAZA_URL = os.environ.get("DATABAZA_URL")
-DATABAZA_KEY = os.environ.get("DATABAZA_KEY")
+# Najprv skúsi prečítať zo Streamlit secrets
+if "DATABAZA_URL" in st.secrets:
+    DATABAZA_URL = st.secrets["DATABAZA_URL"]
+    DATABAZA_KEY = st.secrets["DATABAZA_KEY"]
+else:
+    # Ak beží mimo Streamlit Cloud (napr. Codespaces), použije OS environment
+    DATABAZA_URL = os.environ.get("DATABAZA_URL")
+    DATABAZA_KEY = os.environ.get("DATABAZA_KEY")
 
-databaza: Client = create_client(DATABAZA_URL, DATABAZA_KEY)
-
+# Overenie
+if not DATABAZA_URL or not DATABAZA_KEY:
+    st.error("❌ Chýbajú databázové prístupy. Skontroluj secrets alebo env variables.")
+else:
+    databaza: Client = create_client(DATABAZA_URL, DATABAZA_KEY)
 
 
 tz = pytz.timezone("Europe/Bratislava")
