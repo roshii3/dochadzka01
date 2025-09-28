@@ -7,3 +7,5 @@ plotly==5.24.1
 openpyxl>=3.1.2
 rich==13.5.2
 streamlit-autorefresh
+streamlit-cookies-manager==0.2.1
+
