@@ -4,17 +4,8 @@ import pytz
 from supabase import create_client, Client
 import re
 import time as tmode
-from streamlit_cookies_manager import EncryptedCookieManager
-
-# ==============================
-# Cookies manager
-# ==============================
-cookies = EncryptedCookieManager(
-    prefix="dochadzka_app_", 
-    password="super_tajne_heslo"  # zmeň na svoje silné heslo
-)
-if not cookies.ready():
-    st.stop()
+from pathlib import Path
+import os
 
 # ==============================
 # Nastavenia databázy
@@ -23,7 +14,6 @@ if "DATABAZA_URL" in st.secrets:
     DATABAZA_URL = st.secrets["DATABAZA_URL"]
     DATABAZA_KEY = st.secrets["DATABAZA_KEY"]
 else:
-    import os
     DATABAZA_URL = os.environ.get("DATABAZA_URL")
     DATABAZA_KEY = os.environ.get("DATABAZA_KEY")
 
@@ -32,23 +22,47 @@ if not DATABAZA_URL or not DATABAZA_KEY:
 else:
     databaza: Client = create_client(DATABAZA_URL, DATABAZA_KEY)
 
+# ==============================
+# Automatická cesta pre uloženie kódu zariadenia
+# ==============================
+app_dir = Path.home() / ".dochadzka_app"
+app_dir.mkdir(parents=True, exist_ok=True)
+DEVICE_FILE = app_dir / "device_code.txt"
+
+# ==============================
+# Načítanie uloženého kódu
+# ==============================
+def load_device_code():
+    # najprv z cookies
+    if "device_code" in st.session_state and st.session_state.device_code:
+        return st.session_state.device_code
+    # potom z lokálneho súboru
+    if DEVICE_FILE.exists():
+        return DEVICE_FILE.read_text().strip()
+    return None
+
+if "device_code" not in st.session_state:
+    st.session_state.device_code = load_device_code()
+
+def set_device_code(code: str):
+    """Uloží kód zariadenia do session a lokálneho súboru"""
+    code = code.strip()
+    st.session_state.device_code = code
+    DEVICE_FILE.write_text(code)
+
+def reset_device_code():
+    st.session_state.device_code = None
+    if DEVICE_FILE.exists():
+        DEVICE_FILE.unlink()
+    st.experimental_rerun()
+
+# ==============================
 tz = pytz.timezone("Europe/Bratislava")
 POSITIONS = [
     "Veliteľ","CCTV","Brány","Sklad2",
     "Turniket2","Plombovac2","Sklad3",
     "Turniket3","Plombovac3"
 ]
-
-# ==============================
-# Device Code - cookies
-# ==============================
-if "device_code" not in st.session_state:
-    st.session_state.device_code = cookies.get("device_code")
-
-def set_device_code(code: str):
-    st.session_state.device_code = code.strip()
-    cookies["device_code"] = code.strip()
-    cookies.save()
 
 # ==============================
 # Overenie zariadenia v DB
@@ -111,7 +125,8 @@ def zamestnanec_view():
     if not st.session_state.device_code:
         st.subheader("Autorizácia zariadenia")
         input_code = st.text_input("Zadaj kód zariadenia")
-        if st.button("Potvrdiť kód"):
+        col1, col2 = st.columns(2)
+        if col1.button("Potvrdiť kód"):
             if input_code.strip():
                 if verify_device(input_code):
                     set_device_code(input_code)
@@ -121,6 +136,8 @@ def zamestnanec_view():
                     st.error("❌ Kód zariadenia nie je povolený!")
             else:
                 st.warning("Zadaj platný kód zariadenia!")
+        if col2.button("🔄 Reset zariadenia"):
+            reset_device_code()
         return
 
     now = datetime.now(tz)
@@ -170,7 +187,7 @@ def zamestnanec_view():
             st.session_state.last_message = "❌ Neplatné číslo čipu!"
         else:
             is_valid = save_attendance(user_code, st.session_state.selected_position, "Odchod", now)
-            st.session_state.last_message = f"Odchod zaznamenaný {'(platný)' if is_valid else '(mimo času)'} ❌"
+            st.session_state.last_message = f"Odchod zaznamenaný {'(platný)' if is_valid else '(mimo času)'} ✅"
             st.session_state.temp_user_code = ""
             st.session_state.selected_position = None
             st.session_state.reload_counter += 1
