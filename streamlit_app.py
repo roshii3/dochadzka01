@@ -6,7 +6,24 @@ import re
 import time as tmode
 import os
 from pathlib import Path
+# ==============================
+# Databázové pripojenie
+# ==============================
 
+def init_db():
+    if "DATABAZA_URL" in st.secrets:
+        url = st.secrets["DATABAZA_URL"]
+        key = st.secrets["DATABAZA_KEY"]
+    else:
+        url = os.environ.get("DATABAZA_URL")
+        key = os.environ.get("DATABAZA_KEY")
+
+    if not url or not key:
+        st.stop()  # zastaví appku, kým nenájdeš secrets
+    return create_client(url, key)
+
+# inicializácia — databaza bude dostupná globálne
+databaza: Client = init_db()
 # ==============================
 # Automatická cesta pre uloženie kódu zariadenia
 # ==============================
@@ -28,31 +45,6 @@ def set_device_code(code: str):
     with open(DEVICE_FILE, "w") as f:
         f.write(code.strip())
 
-# ==============================
-# Nastavenia databázy
-# ==============================
-#DATABAZA_URL = st.secrets["DATABAZA_URL"]
-#DATABAZA_KEY = st.secrets["DATABAZA_KEY"]
-#databaza: Client = create_client(DATABAZA_URL, DATABAZA_KEY)
-
-import os
-import streamlit as st
-from supabase import create_client, Client
-
-# Najprv skúsi prečítať zo Streamlit secrets
-if "DATABAZA_URL" in st.secrets:
-    DATABAZA_URL = st.secrets["DATABAZA_URL"]
-    DATABAZA_KEY = st.secrets["DATABAZA_KEY"]
-else:
-    # Ak beží mimo Streamlit Cloud (napr. Codespaces), použije OS environment
-    DATABAZA_URL = os.environ.get("DATABAZA_URL")
-    DATABAZA_KEY = os.environ.get("DATABAZA_KEY")
-
-# Overenie
-if not DATABAZA_URL or not DATABAZA_KEY:
-    st.error("❌ Chýbajú databázové prístupy. Skontroluj secrets alebo env variables.")
-else:
-    databaza: Client = create_client(DATABAZA_URL, DATABAZA_KEY)
 
 
 tz = pytz.timezone("Europe/Bratislava")
