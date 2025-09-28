@@ -31,9 +31,19 @@ def set_device_code(code: str):
 # ==============================
 # Nastavenia databázy
 # ==============================
-DATABAZA_URL = st.secrets["DATABAZA_URL"]
-DATABAZA_KEY = st.secrets["DATABAZA_KEY"]
+#DATABAZA_URL = st.secrets["DATABAZA_URL"]
+#DATABAZA_KEY = st.secrets["DATABAZA_KEY"]
+#databaza: Client = create_client(DATABAZA_URL, DATABAZA_KEY)
+
+import os
+
+# Nastavenia databázy
+DATABAZA_URL = os.environ.get("DATABAZA_URL")
+DATABAZA_KEY = os.environ.get("DATABAZA_KEY")
+
 databaza: Client = create_client(DATABAZA_URL, DATABAZA_KEY)
+
+
 
 tz = pytz.timezone("Europe/Bratislava")
 POSITIONS = [
