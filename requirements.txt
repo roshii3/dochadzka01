@@ -1,11 +1,19 @@
+# Streamlit a závislosti
 streamlit==1.27.0
+rich>=10.14.0,<14
+
+# Data a databáza
 pandas==2.1.1
 supabase==1.0.1
 sqlalchemy==2.0.20
 psycopg2-binary==2.9.7
-plotly==5.24.1
 openpyxl>=3.1.2
-rich==13.5.2
-streamlit-autorefresh
-streamlit-cookies-manager==0.2.1
 
+# Grafy
+plotly==5.24.1
+
+# Automatické obnovovanie stránok (voliteľné)
+streamlit-autorefresh==1.0.1
+
+# Cookies manažér
+streamlit-cookies-manager==0.2.1
