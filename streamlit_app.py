@@ -107,12 +107,13 @@ def js_check_localstorage_and_redirect():
     """
     components.html(js, height=0)
 
+
 def js_save_device_code_and_clean_url(code: str):
     # uloží do localStorage a okamžite vyčistí query param z URL (history.replaceState)
     safe_code = code.replace('"', '\\"')
     js = f"""
     <script>
-    (function(){
+    (function(){{
         try {{
             window.localStorage.setItem("device_code", "{safe_code}");
             // odstránime device_code z URL pre bezpečnosť
@@ -122,10 +123,11 @@ def js_save_device_code_and_clean_url(code: str):
         }} catch(e) {{
             console.log("save device code error", e);
         }}
-    })();
+    }})();
     </script>
     """
     components.html(js, height=0)
+
 
 def js_remove_device_code():
     js = """
