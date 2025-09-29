@@ -4,7 +4,7 @@ import pytz
 from supabase import create_client, Client
 import re
 import time as tmode
-from streamlit_cookies_manager import EncryptedCookieManager
+
 
 # =====================================
 # Cookies manažér
