@@ -4,16 +4,7 @@ import pytz
 from supabase import create_client, Client
 import re
 import time as tmode
-# =====================================
-# Cookies manažér
-# =====================================
-cookies = EncryptedCookieManager(
-    prefix="attendance_app_",
-    password="super_tajne_heslo"  # zmeň na vlastné silné heslo
-)
 
-if not cookies.ready():
-    st.stop()
 
 # =====================================
 # Nastavenia databázy
@@ -28,19 +19,15 @@ POSITIONS = [
     "Turniket2","Plombovac2","Sklad3",
     "Turniket3","Plombovac3"
 ]
-
 # =====================================
 # Session state pre zariadenie
 # =====================================
 if "device_code" not in st.session_state:
-    st.session_state.device_code = cookies.get("device_code")
+    st.session_state.device_code = None
 
 def set_device_code(code: str):
-    """Uloží kód zariadenia do session a cookies"""
-    code = code.strip()
-    st.session_state.device_code = code
-    cookies["device_code"] = code
-    cookies.save()
+    """Uloží kód zariadenia do session"""
+    st.session_state.device_code = code.strip()
 
 # =====================================
 # Overenie zariadenia v DB
