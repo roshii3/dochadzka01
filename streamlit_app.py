@@ -4,7 +4,6 @@ import pytz
 from supabase import create_client, Client
 import re
 import time as tmode
-
 # =====================================
 # Cookies manažér
 # =====================================
