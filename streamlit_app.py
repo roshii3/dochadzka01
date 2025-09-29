@@ -61,7 +61,7 @@ def valid_departure(now):
 # Validácia QR kódu zamestnanca
 # ==============================
 def is_valid_code(code: str) -> bool:
-    return bool(re.fullmatch(r"[A-Za-z0-9]{8}", code))
+    return bool(re.fullmatch(r"[A-Za-z0-9]{10}", code))
 
 # ==============================
 # Uloženie záznamu
