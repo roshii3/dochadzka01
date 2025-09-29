@@ -5,7 +5,6 @@ from supabase import create_client, Client
 import re
 import time as tmode
 
-
 # =====================================
 # Nastavenia databázy
 # =====================================
@@ -19,6 +18,7 @@ POSITIONS = [
     "Turniket2","Plombovac2","Sklad3",
     "Turniket3","Plombovac3"
 ]
+
 # =====================================
 # Session state pre zariadenie
 # =====================================
