@@ -5,7 +5,19 @@ from supabase import create_client, Client
 import re
 import time as tmode
 from pathlib import Path
+import streamlit as st
 
+st.set_page_config(page_title="Dochádzka", page_icon="🕒", layout="centered")
+
+# Skrytie hamburger menu a footeru
+hide_menu = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_menu, unsafe_allow_html=True)
 # ==============================
 # Nastavenia databázy
 # ==============================
