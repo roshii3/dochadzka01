@@ -140,7 +140,8 @@ def zamestnanec_view():
     user_code = st.text_input(
         "Naskenuj svoj QR kód",
         value=st.session_state.temp_user_code,
-        key=input_key
+        key=input_key,
+        type="password"
     ).replace(" ", "")
 
     st.write("👉 Vyber svoju pozíciu:")
