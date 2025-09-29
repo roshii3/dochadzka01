@@ -4,6 +4,18 @@ import pytz
 from supabase import create_client, Client
 import re
 import time as tmode
+from streamlit_cookies_manager import EncryptedCookieManager
+
+# =====================================
+# Cookies manažér
+# =====================================
+cookies = EncryptedCookieManager(
+    prefix="attendance_app_",
+    password="super_tajne_heslo"  # zmeň na vlastné silné heslo
+)
+
+if not cookies.ready():
+    st.stop()
 
 # =====================================
 # Nastavenia databázy
@@ -14,20 +26,23 @@ databaza: Client = create_client(DATABAZA_URL, DATABAZA_KEY)
 
 tz = pytz.timezone("Europe/Bratislava")
 POSITIONS = [
-    "Veliteľ","CCTV","Brány","Sklad2",
-    "Turniket2","Plombovac2","Sklad3",
-    "Turniket3","Plombovac3"
+    "Veliteľ", "CCTV", "Brány", "Sklad2",
+    "Turniket2", "Plombovac2", "Sklad3",
+    "Turniket3", "Plombovac3"
 ]
 
 # =====================================
-# Session state pre zariadenie
+# Session state + cookies pre zariadenie
 # =====================================
 if "device_code" not in st.session_state:
-    st.session_state.device_code = None
+    st.session_state.device_code = cookies.get("device_code")
 
 def set_device_code(code: str):
-    """Uloží kód zariadenia do session"""
-    st.session_state.device_code = code.strip()
+    """Uloží kód zariadenia do session a cookies"""
+    code = code.strip()
+    st.session_state.device_code = code
+    cookies["device_code"] = code
+    cookies.save()
 
 # =====================================
 # Overenie zariadenia v DB
@@ -35,6 +50,25 @@ def set_device_code(code: str):
 def verify_device(code: str) -> bool:
     result = databaza.table("devices").select("code").eq("code", code.strip()).execute()
     return bool(result.data and len(result.data) > 0)
+
+# =====================================
+# Autorizácia zariadenia (iba raz)
+# =====================================
+def device_authorization():
+    if not st.session_state.device_code:  # ešte nie je uložené v cookies
+        st.subheader("🔐 Autorizácia zariadenia")
+        input_code = st.text_input("Zadaj kód zariadenia")
+        if st.button("Potvrdiť kód"):
+            if input_code.strip():
+                if verify_device(input_code):  # prvé overenie v DB
+                    set_device_code(input_code)  # uloží do cookies
+                    st.success("✅ Zariadenie autorizované, už sa nebude pýtať")
+                    st.experimental_rerun()
+                else:
+                    st.error("❌ Kód zariadenia nie je povolený!")
+            else:
+                st.warning("⚠️ Zadaj platný kód zariadenia!")
+        st.stop()  # stopne appku, kým nezadá kód
 
 # =====================================
 # Validácia času
@@ -77,6 +111,9 @@ def save_attendance(user_code, position, action, now=None):
 # Zamestnanecký view
 # =====================================
 def zamestnanec_view():
+    # 🔐 autorizácia zariadenia (iba raz)
+    device_authorization()
+
     if "temp_user_code" not in st.session_state:
         st.session_state.temp_user_code = ""
     if "selected_position" not in st.session_state:
@@ -85,22 +122,6 @@ def zamestnanec_view():
         st.session_state.last_message = ""
     if "reload_counter" not in st.session_state:
         st.session_state.reload_counter = 0
-
-    # 🔐 kontrola zariadenia
-    if not st.session_state.device_code:
-        st.subheader("Autorizácia zariadenia")
-        input_code = st.text_input("Zadaj kód zariadenia")
-        if st.button("Potvrdiť kód"):
-            if input_code.strip():
-                if verify_device(input_code):
-                    set_device_code(input_code)
-                    st.success("Zariadenie autorizované ✅")
-                    st.experimental_rerun()
-                else:
-                    st.error("❌ Kód zariadenia nie je povolený!")
-            else:
-                st.warning("Zadaj platný kód zariadenia!")
-        return
 
     now = datetime.now(tz)
     st.subheader(f"🕒 Aktuálny čas: {now.strftime('%H:%M:%S')}")
