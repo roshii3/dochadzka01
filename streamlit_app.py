@@ -88,7 +88,7 @@ def save_attendance(user_code, position, action, now=None):
         now = datetime.now(tz)
 
     # Posun o +2h pred uložením do DB
-    now_corrected = now + timedelta(hours=2)
+    now_corrected = now
 
     is_valid = valid_arrival(now_corrected) if action == "Príchod" else valid_departure(now_corrected)
 
