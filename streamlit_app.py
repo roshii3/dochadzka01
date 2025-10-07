@@ -86,16 +86,21 @@ def save_attendance(user_code, position, action, now=None):
 
     if not now:
         now = datetime.now(tz)
-    is_valid = valid_arrival(now) if action == "Príchod" else valid_departure(now)
+
+    is_valid = valid_arrival(now) if action.lower() == "príchod" else valid_departure(now)
+
+    # prevod na UTC pred uložením
+    now_utc = now.astimezone(pytz.UTC)
 
     databaza.table("attendance").insert({
         "user_code": user_code,
         "position": position,
         "action": action,
-        "timestamp": now.isoformat(),
+        "timestamp": now_utc.isoformat(),  # uloženie v UTC
         "valid": is_valid
     }).execute()
     return is_valid
+
 
 # ==============================
 # Zamestnanecký view
