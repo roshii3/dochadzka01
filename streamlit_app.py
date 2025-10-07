@@ -78,6 +78,7 @@ def is_valid_code(code: str) -> bool:
 # ==============================
 # Uloženie záznamu
 # ==============================
+
 def save_attendance(user_code, position, action, now=None):
     user_code = user_code.strip()
     if not is_valid_code(user_code):
@@ -89,17 +90,18 @@ def save_attendance(user_code, position, action, now=None):
 
     is_valid = valid_arrival(now) if action.lower() == "príchod" else valid_departure(now)
 
-    # prevod na UTC pred uložením
-    now_utc = now.astimezone(pytz.UTC)
+    # prevod na UTC + odstránenie tz info pred uložením
+    now_utc = now.astimezone(pytz.UTC).replace(tzinfo=None)
 
     databaza.table("attendance").insert({
         "user_code": user_code,
         "position": position,
         "action": action,
-        "timestamp": now_utc.isoformat(),  # uloženie v UTC
+        "timestamp": now_utc.isoformat(),  # uloženie bez tz, DB interpretuje ako UTC
         "valid": is_valid
     }).execute()
     return is_valid
+
 
 
 # ==============================
