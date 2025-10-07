@@ -1,11 +1,10 @@
 import streamlit as st
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 import pytz
 from supabase import create_client, Client
 import re
 import time as tmode
 from pathlib import Path
-import streamlit as st
 
 st.set_page_config(page_title="Dochádzka", page_icon="🕒", layout="centered")
 
@@ -18,6 +17,7 @@ hide_menu = """
     </style>
 """
 st.markdown(hide_menu, unsafe_allow_html=True)
+
 # ==============================
 # Nastavenia databázy
 # ==============================
@@ -78,7 +78,6 @@ def is_valid_code(code: str) -> bool:
 # ==============================
 # Uloženie záznamu
 # ==============================
-
 def save_attendance(user_code, position, action, now=None):
     user_code = user_code.strip()
     if not is_valid_code(user_code):
@@ -88,21 +87,20 @@ def save_attendance(user_code, position, action, now=None):
     if not now:
         now = datetime.now(tz)
 
-    is_valid = valid_arrival(now) if action.lower() == "príchod" else valid_departure(now)
+    # Posun o +2h pred uložením do DB
+    now_corrected = now + timedelta(hours=2)
 
-    # prevod na UTC + odstránenie tz info pred uložením
-    now_utc = now.astimezone(pytz.UTC).replace(tzinfo=None)
+    is_valid = valid_arrival(now_corrected) if action == "Príchod" else valid_departure(now_corrected)
 
+    # uloženie
     databaza.table("attendance").insert({
         "user_code": user_code,
         "position": position,
         "action": action,
-        "timestamp": now_utc.isoformat(),  # uloženie bez tz, DB interpretuje ako UTC
+        "timestamp": now_corrected.isoformat(),
         "valid": is_valid
     }).execute()
     return is_valid
-
-
 
 # ==============================
 # Zamestnanecký view
@@ -116,6 +114,8 @@ def zamestnanec_view():
         st.session_state.last_message = ""
     if "reload_counter" not in st.session_state:
         st.session_state.reload_counter = 0
+    if "top_message" not in st.session_state:
+        st.session_state.top_message = ""
 
     # 🔐 kontrola zariadenia
     if not st.session_state.device_code:
@@ -135,6 +135,11 @@ def zamestnanec_view():
 
     now = datetime.now(tz)
     st.subheader(f"🕒 Aktuálny čas: {now.strftime('%H:%M:%S')}")
+
+    # zobraz top hlásenie
+    if st.session_state.top_message:
+        st.success(st.session_state.top_message)
+        st.session_state.top_message = ""  # vymaže sa po zobrazení
 
     if st.button("🆕 Nový príchod/odchod"):
         st.session_state.temp_user_code = ""
@@ -162,26 +167,26 @@ def zamestnanec_view():
 
     col1, col2 = st.columns(2)
 
-    if col1.button("✅ Príchod", key="prichod_btn"):
+    def save_and_notify(action_name):
+        nonlocal user_code
         if not user_code or not st.session_state.selected_position:
             st.session_state.last_message = "⚠️ Zadaj QR kód a vyber pozíciu!"
         else:
-            is_valid = save_attendance(user_code, st.session_state.selected_position, "Príchod", now)
-            st.session_state.last_message = f"Príchod zaznamenaný {'(platný)' if is_valid else '(mimo času)'} ✅"
+            now_corrected = datetime.now(tz) + timedelta(hours=2)
+            is_valid = save_attendance(user_code, st.session_state.selected_position, action_name, now_corrected)
+            st.session_state.last_message = f"{action_name} zaznamenaný {'(platný)' if is_valid else '(mimo času)'} ✅"
+            st.session_state.top_message = st.session_state.last_message  # krátke hlásenie hore
             st.session_state.temp_user_code = ""
             st.session_state.selected_position = None
             st.session_state.reload_counter += 1
+
+    if col1.button("✅ Príchod", key="prichod_btn"):
+        save_and_notify("Príchod")
 
     if col2.button("🚪 Odchod", key="odchod_btn"):
-        if not user_code or not st.session_state.selected_position:
-            st.session_state.last_message = "⚠️ Zadaj QR kód a vyber pozíciu!"
-        else:
-            is_valid = save_attendance(user_code, st.session_state.selected_position, "Odchod", now)
-            st.session_state.last_message = f"Odchod zaznamenaný {'(platný)' if is_valid else '(mimo času)'} ✅"
-            st.session_state.temp_user_code = ""
-            st.session_state.selected_position = None
-            st.session_state.reload_counter += 1
+        save_and_notify("Odchod")
 
+    # spodné hlásenie
     if st.session_state.last_message:
         message_placeholder = st.empty()
         message_placeholder.success(st.session_state.last_message)
