@@ -185,7 +185,7 @@ def zamestnanec_view():
             st.session_state.top_message = "⚠️ Zadaj QR kód a vyber pozíciu!"
             st.session_state.message_timer = datetime.now() + timedelta(seconds=3)
         else:
-            now_corrected = datetime.now(tz) + timedelta(hours=2)
+            now_corrected = datetime.now(tz) + timedelta(hours=1)
             is_valid, error_msg = save_attendance(user_code, st.session_state.selected_position, action_name, now_corrected)
             if error_msg:
                 st.session_state.top_message = error_msg
