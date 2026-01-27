@@ -35,7 +35,7 @@ tz = pytz.timezone("Europe/Bratislava")
 POSITIONS = [
     "Veliteľ","CCTV","Brány","Sklad2",
     "Turniket2","Plombovac2","Sklad3",
-    "Turniket3","Plombovac3"
+    "Turniket3","Plombovac3","EXTRA"
 ]
 
 # ==============================
