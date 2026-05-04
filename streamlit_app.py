@@ -33,7 +33,7 @@ DEVICE_FILE = app_dir / "device_code.txt"
 
 tz = pytz.timezone("Europe/Bratislava")
 POSITIONS = [
-    "Veliteľ","Kontrolor_DC2","Kontrolor_DC3","Mobilny_SBS","Plombovac","EXTRA"
+    "Veliteľ","Kontrolor_DC2","Kontrolor_DC3","Mobilny_SBS","EXTRA"
 ]
 
 # ==============================
